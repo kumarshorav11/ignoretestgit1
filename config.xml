@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?><flow-definition plugin="workflow-job@2.10">
+  <actions/>
+  <description>This job has been created automatically from HCL ADC framework using Spring-Boot template with template name as jenkins_template_springboot</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+      <triggers>
+        <hudson.triggers.SCMTrigger>
+          <spec>H/2 * * * *</spec>
+          <ignorePostCommitHooks>false</ignorePostCommitHooks>
+        </hudson.triggers.SCMTrigger>
+      </triggers>
+    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+  </properties>
+
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.30">
+    <script>node('master') {
+
+        stage('Code Checkout') {
+               echo 'Checking out code...'
+               checkout([$class: 'GitSCM', branches: [[name: '*/cancel-trx-demo']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: '7c899746-60a4-4b24-afb3-6c964cdec588', url: 'git@repo.hclets.com:ADPaaS/generated-apps.git']]])
+        }
+
+        stage('Code Build') {
+                echo 'Building code...'
+                sh returnStdout: true, script: '''cd cancel-trx
+                mvn clean install '''
+        }
+
+        stage('Code Tests') {
+                echo 'Running test cases for cancel-trx ..'
+ 		            sh returnStdout: true, script: '''cd cancel-trx
+		            mvn clean test '''
+        }
+
+        stage('Code Analysis') {
+                echo 'Analysing code for cancel-trx...'
+                sh returnStdout: true, script: '''cd cancel-trx
+                mvn clean test -B -V -U -e sonar:sonar -Dsonar.host.url=\'https://sonar36.demos.hclets.com\''''
+        }
+
+        stage('Running Docker image build and publish') {
+                echo 'Building the docker image for cancel-trx ..'
+                //sh returnStdout: true, script: '''cd cancel-trx
+                //mvn clean package docker:build '''
+
+                echo 'Publishing image for cancel-trx ..'
+                //sh returnStdout: true, script: '''cd cancel-trx
+                //mvn docker:push -DskipTests'''
+        }
+
+        stage('Nexus Artifacts upload') {
+                echo 'Uploading cancel-trx artifacts to nexus..'
+				        //nexusArtifactUploader artifacts: [[artifactId: 'cancel-trx', classifier: '', file: 'cancel-trx/target/cancel-trx-0.0.1-SNAPSHOT.war', type: 'war']], credentialsId: 'template.nexuscred', groupId: 'com.hcl', nexusUrl: 'template.nexusurl', nexusVersion: 'nexus2', protocol: 'http', repository: 'Snapshots', version: '0.0.1'
+       }
+
+       stage('Running service cancel-trx as spring-boot') {
+                withEnv(['JENKINS_NODE_COOKIE=dontkill']) {
+                                echo 'check if cancel-trx is running'
+                                sh '''ps -ef | grep spring-boot:run | grep -v grep | awk '{print \$2}' | xargs -r kill'''
+                echo 'Running the cancel-trx as springboot..'
+                sh returnStdout: true, script: '''cd cancel-trx
+                                nohup mvn clean spring-boot:run &amp; &gt;/tmp/cancel-trx.log 2&gt;&amp;1'''
+                }
+        }
+		
+}
+ </script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+</flow-definition>
