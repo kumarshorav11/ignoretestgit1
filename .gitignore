@@ -1,0 +1,9 @@
+### Java ###
+ # Compiled class file
+.class
+*.log
+# folders to be ignored
+**/logs
+**/classpath
+git-ignore.txt
+folder_name/
