@@ -1,1 +1,2 @@
 checking for git gui command
+Adding some thing else
